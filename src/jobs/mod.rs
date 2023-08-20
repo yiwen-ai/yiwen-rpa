@@ -37,7 +37,8 @@ impl RPA {
     pub fn new(cfg: conf::Conf) -> Self {
         let mut headers: header::HeaderMap<header::HeaderValue> =
             header::HeaderMap::with_capacity(2);
-        headers.insert(header::CONTENT_TYPE, "application/cbor".parse().unwrap());
+        headers.insert(header::ACCEPT, "application/cbor".parse().unwrap());
+        headers.insert(header::ACCEPT_ENCODING, "gzip".parse().unwrap());
         headers.insert("x-auth-user", JARVIS.parse().unwrap());
         headers.insert("x-auth-user-rating", "127".parse().unwrap());
 
@@ -97,11 +98,15 @@ impl RPA {
                     let data = encoder.finish().into_result()?;
 
                     req.header("content-encoding", "gzip")
+                        .header(header::CONTENT_TYPE, "application/cbor")
                         .body(data)
                         .send()
                         .await?
                 } else {
-                    req.body(data).send().await?
+                    req.header(header::CONTENT_TYPE, "application/cbor")
+                        .body(data)
+                        .send()
+                        .await?
                 }
             }
         };
