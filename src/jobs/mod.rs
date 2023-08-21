@@ -173,7 +173,7 @@ pub struct PublicationOutput {
 impl RPA {
     async fn publication_review(&self, jid: u128) -> anyhow::Result<()> {
         let jid = uuid::Uuid::from_u128(jid).to_string();
-        let ts = unix_ms() as i64 - 20 * 60 * 1000;
+        let ts = unix_ms() as i64 - 10 * 60 * 1000;
         let start = Instant::now();
         let todo = self.list_todo(&jid).await?;
         for item in todo {
