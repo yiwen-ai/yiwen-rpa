@@ -152,6 +152,13 @@ pub struct AckTaskInput {
     pub message: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DeleteTaskInput {
+    pub uid: PackObject<xid::Id>,
+    pub id: Option<PackObject<xid::Id>>,
+    pub status: Option<i8>,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct PublicationInput {
     pub gid: PackObject<xid::Id>,
@@ -168,16 +175,26 @@ pub struct PublicationOutput {
     pub version: i16,
     pub status: i8,
     pub updated_at: i64,
+    pub content_length: usize,
 }
 
 impl RPA {
     async fn publication_review(&self, jid: u128) -> anyhow::Result<()> {
         let jid = uuid::Uuid::from_u128(jid).to_string();
-        let ts = unix_ms() as i64 - 10 * 60 * 1000;
+        let ts = unix_ms() as i64 - 8 * 60 * 1000;
         let start = Instant::now();
         let todo = self.list_todo(&jid).await?;
+        log::info!(target: "job",
+            action = "list_todo",
+            rid = &jid,
+            todo = todo.len();
+            "start",
+        );
+
         for item in todo {
             let item_start = start.elapsed().as_millis() as u64;
+            let task_uid = item.sender.clone();
+            let task_id = item.tid.clone();
             let res = self.publication_review_item(&jid, ts, item).await;
             let elapsed = start.elapsed().as_millis() as u64 - item_start;
             match res {
@@ -199,6 +216,17 @@ impl RPA {
                         error = err.to_string();
                         "failed",
                     );
+                    // clear invalid task
+                    let _ = self
+                        .remove_todo(
+                            &jid,
+                            &DeleteTaskInput {
+                                uid: task_uid,
+                                id: Some(task_id),
+                                status: None,
+                            },
+                        )
+                        .await;
                 }
             }
         }
@@ -245,7 +273,7 @@ impl RPA {
                 Some(&Pagination {
                     uid: self.system_user.clone(),
                     page_token: None,
-                    page_size: None,
+                    page_size: Some(1000),
                     status: Some(0i8),
                     fields: Some(vec!["payload".to_string()]),
                 }),
@@ -263,6 +291,12 @@ impl RPA {
         Ok(())
     }
 
+    async fn remove_todo(&self, jid: &str, input: &DeleteTaskInput) -> anyhow::Result<()> {
+        let url = self.taskbase.join("/v1/task/delete")?;
+        let _: bool = self.request(Method::POST, url, jid, Some(input)).await?;
+        Ok(())
+    }
+
     async fn get_publication(
         &self,
         jid: &str,
@@ -274,7 +308,7 @@ impl RPA {
             .append_pair("cid", &input.cid.to_string())
             .append_pair("language", &input.language)
             .append_pair("version", &input.version.to_string())
-            .append_pair("fields", "status,updated_at");
+            .append_pair("fields", "status,updated_at,content_length");
         let res = self
             .request::<(), PublicationOutput>(Method::GET, url, jid, None)
             .await?;
