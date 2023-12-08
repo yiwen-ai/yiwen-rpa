@@ -242,7 +242,7 @@ impl RPA {
     ) -> anyhow::Result<()> {
         let publ: PublicationInput = cbor_from_slice(&item.payload.unwrap())?;
         let mut publ = self.get_publication(jid, &publ).await?;
-        if publ.status < 0 || publ.updated_at > ts {
+        if publ.updated_at > ts {
             return Ok(());
         }
         if publ.status == 0 {

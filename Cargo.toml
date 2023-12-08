@@ -1,6 +1,6 @@
 [package]
 name = "yiwen-rpa"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 rust-version = "1.64"
 description = ""
@@ -29,7 +29,7 @@ bytes = "1"
 base64 = "0.21"
 ciborium = "0.2"
 ciborium-io = "0.2"
-isolang = { git = "https://github.com/yiwen-ai/isolang-rs.git", branch = "master", features = [
+isolang = { version = "2.4", features = [
   "english_names",
   "lowercase_names",
   "local_names",
